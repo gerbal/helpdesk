@@ -80,7 +80,24 @@ query_parser.add_argument(
 #
 # define our (kinds of) resources
 #
-class HelpRequest(Resource):
+class helprequest(resource):
+    def get(self, helprequest_id):
+        error_if_helprequest_not_found(helprequest_id)
+        return make_response(
+            render_helprequest_as_html(
+                data["helprequests"][helprequest_id]), 200)
+
+    def patch(self, helprequest_id):
+        error_if_helprequest_not_found(helprequest_id)
+        helprequest = data["helprequests"][helprequest_id]
+        update = update_helprequest_parser.parse_args()
+        helprequest['priority'] = update['priority']
+        if len(update['comment'].strip()) > 0:
+            helprequest.setdefault('comments', []).append(update['comment'])
+        return make_response(
+            render_helprequest_as_html(helprequest), 200)
+
+class getMenu(resource):
     def get(self, helprequest_id):
         error_if_helprequest_not_found(helprequest_id)
         return make_response(
@@ -121,6 +138,23 @@ class HelpRequestList(Resource):
             render_helprequest_list_as_html(
                 filter_and_sort_helprequests()), 201)
 
+class menuList(Resource):
+    def get(self):
+        query = query_parser.parse_args()
+        return make_response(
+            render_helprequest_list_as_html(
+                filter_and_sort_helprequests(
+                    q=query['q'], sort_by=query['sort-by'])), 200)
+
+    def post(self):
+        helprequest = new_helprequest_parser.parse_args()
+        helprequest['time'] = datetime.isoformat(datetime.now())
+        helprequest['priority'] = PRIORITIES.index('normal')
+        helprequests[generate_id()] = helprequest
+        return make_response(
+            render_helprequest_list_as_html(
+                filter_and_sort_helprequests()), 201)
+
 class HelpRequestListAsJSON(Resource):
     def get(self):
         return data
@@ -130,10 +164,11 @@ class HelpRequestListAsJSON(Resource):
 #
 app = Flask(__name__)
 api = Api(app)
-api.add_resource(HelpRequestList, '/requests')
-api.add_resource(HelpRequestListAsJSON, '/requests.json')
-api.add_resource(HelpRequest, '/request/<string:helprequest_id>')
-api.add_resource(HelpRequestAsJSON, '/request/<string:helprequest_id>.json')
+api.add_resource(MenuList, '/list_of_menus')
+#api.add_resource(HelpRequestListAsJSON, '/requests.json')
+api.add_resource(getMenu, '/menu/<string:menu_id>')
+api.add_resource(getDish, '/dish/<string:dish_id>'
+#api.add_resource(HelpRequestAsJSON, '/request/<string:helprequest_id>.json')
 
 # start the server
 if __name__ == '__main__':
